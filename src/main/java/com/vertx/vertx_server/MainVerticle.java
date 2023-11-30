@@ -1,5 +1,7 @@
 package com.vertx.vertx_server;
 
+import com.vertx.vertx_server.handler.ItemHandler;
+import com.vertx.vertx_server.handler.UserHandler;
 import com.vertx.vertx_server.model.Item;
 import io.vertx.config.ConfigRetriever;
 import io.vertx.config.ConfigRetrieverOptions;
@@ -34,26 +36,21 @@ public class MainVerticle extends AbstractVerticle {
     configRetriever.getConfig(ar -> {
       if (ar.succeeded()) {
         JsonObject config = ar.result();
-        System.out.println("_________________");
-        System.out.println(config.encodePrettily());
-        System.out.println("___________________");
         JsonObject jwtConfig = config.getJsonObject("jwt");
-        System.out.println("*********************");
-        System.out.println(jwtConfig.encodePrettily());
-        System.out.println("*******************");
         initJWTAuth(jwtConfig);
         mongoClient = MongoClient.createShared(vertx, config.getJsonObject("mongo"));
+        ItemHandler itemHandler = new ItemHandler(mongoClient);
+        UserHandler userHandler = new UserHandler(mongoClient, jwtAuth);
+
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-
-        JWTAuthHandler jwtAuthHandler = JWTAuthHandler.create(jwtAuth);
         router.route("/items").handler(JWTAuthHandler.create(jwtAuth));
 
-        router.post("/register").handler(this::handleRegister);
-        router.post("/login").handler(this::handleLogin);
+        router.post("/register").handler(userHandler::handleRegister);
+        router.post("/login").handler(userHandler::handleLogin);
 
-        router.post("/items").handler(this::handleAddItem);
-        router.get("/items").handler(this::handleGetItems);
+        router.post("/items").handler(itemHandler::handleAddItem);
+        router.get("/items").handler(itemHandler::handleGetItems);
 
         createHttpServer(startPromise, config, router);
       } else {
@@ -98,93 +95,4 @@ public class MainVerticle extends AbstractVerticle {
       }
     });
   }
-
-  private void handleRegister(RoutingContext context) {
-    JsonObject body = context.getBodyAsJson();
-    String login = body.getString("login");
-    String password = body.getString("password");
-
-    String hashedPassword = hashPassword(password);
-
-    JsonObject newUser = new JsonObject()
-      .put("id", UUID.randomUUID().toString())
-      .put("login", login)
-      .put("password", hashedPassword);
-
-    mongoClient.save("users", newUser, res -> {
-      if (res.succeeded()) {
-        context.response().setStatusCode(204).end("Registering successfull.");
-      } else {
-        context.response().setStatusCode(500).end("User registration failed");
-      }
-    });
-  }
-
-  private void handleLogin(RoutingContext context) {
-    JsonObject body = context.getBodyAsJson();
-    String login = body.getString("login");
-    String password = body.getString("password");
-
-    JsonObject query = new JsonObject().put("login", login);
-    mongoClient.findOne("users", query, null, lookup -> {
-      if (lookup.succeeded()) {
-        JsonObject user = lookup.result();
-        if (user != null && BCrypt.checkpw(password, user.getString("password"))) {
-          String token = jwtAuth.generateToken(
-            new JsonObject().put("sub", user.getString("login")),
-            new JWTOptions().setExpiresInSeconds(60 * 60)
-          );
-          context.response()
-            .putHeader("Content-Type", "application/json")
-            .end(new JsonObject().put("token", token).encode());
-        } else {
-          context.response().setStatusCode(401).end("Invalid credentials");
-        }
-      } else {
-        context.response().setStatusCode(500).end("Authentication failed");
-      }
-    });
-  }
-
-  private void handleAddItem(RoutingContext context) {
-    JsonObject userPrincipal = context.user().principal();
-    String ownerId = userPrincipal.getString("sub");
-
-    JsonObject body = context.getBodyAsJson();
-    if (body == null) {
-      context.response().setStatusCode(400).end("Invalid JSON");
-      return;
-    }
-
-    Item item = new Item(UUID.randomUUID(), UUID.fromString(body.getString(ownerId)), body.getString("name"));
-    JsonObject itemJson = JsonObject.mapFrom(item);
-    mongoClient.save("items", itemJson, res -> {
-      if (res.succeeded()) {
-        context.response()
-          .setStatusCode(201)
-          .putHeader("Content-Type", "application/json")
-          .end(new JsonObject().put("id", res.result()).encode());
-      } else {
-        context.response().setStatusCode(500).end("Failed to save item");
-      }
-    });
-  }
-
-  private void handleGetItems(RoutingContext context) {
-    mongoClient.find("items", new JsonObject(), res -> {
-      if (res.succeeded()) {
-        context.response()
-          .setStatusCode(200)
-          .putHeader("Content-Type", "application/json")
-          .end(res.result().toString());
-      } else {
-        context.response().setStatusCode(500).end("Failed to retrieve items");
-      }
-    });
-  }
-
-  private String hashPassword(String password) {
-    return BCrypt.hashpw(password, BCrypt.gensalt());
-  }
-
 }
