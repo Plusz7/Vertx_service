@@ -26,6 +26,7 @@ import java.util.logging.Logger;
 
 public class MainVerticle extends AbstractVerticle {
 
+  private static final String ITEMS_ENDPOINT = "/items";
   private MongoClient mongoClient;
   private JWTAuth jwtAuth;
 
@@ -44,13 +45,13 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-        router.route("/items").handler(JWTAuthHandler.create(jwtAuth));
+        router.route(ITEMS_ENDPOINT).handler(JWTAuthHandler.create(jwtAuth));
 
         router.post("/register").handler(userHandler::handleRegister);
         router.post("/login").handler(userHandler::handleLogin);
 
-        router.post("/items").handler(itemHandler::handleAddItem);
-        router.get("/items").handler(itemHandler::handleGetItems);
+        router.post(ITEMS_ENDPOINT).handler(itemHandler::handleAddItem);
+        router.get(ITEMS_ENDPOINT).handler(itemHandler::handleGetItems);
 
         createHttpServer(startPromise, config, router);
       } else {
