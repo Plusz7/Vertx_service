@@ -1,0 +1,10 @@
+{
+  "http.port": 3000,
+  "mongo": {
+    "connection_string": "mongodb://localhost:27017",
+    "db_name": "vertx_db"
+  },
+  "jwt": {
+    "secret": "Y29tLm15YXBwLnZlcnR4LmpzZWtyZXRrZXlmcm9tT3BlblNTTA=="
+  }
+}

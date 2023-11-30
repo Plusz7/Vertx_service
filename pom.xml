@@ -1,28 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
-
   <groupId>com.vertx</groupId>
   <artifactId>vertx_server</artifactId>
   <version>1.0.0-SNAPSHOT</version>
-
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
-    <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
-    <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
-    <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
-
-    <vertx.version>4.5.0</vertx.version>
-    <junit-jupiter.version>5.9.1</junit-jupiter.version>
-
+    <vertx-maven-plugin.version>1.0.28</vertx-maven-plugin.version>
     <main.verticle>com.vertx.vertx_server.MainVerticle</main.verticle>
+    <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
+    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+    <vertx.version>4.5.0</vertx.version>
     <launcher.class>io.vertx.core.Launcher</launcher.class>
+    <junit-jupiter.version>5.9.1</junit-jupiter.version>
+    <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
   </properties>
-
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -32,9 +26,15 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-stack-depchain</artifactId>
+        <version>${vertx.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
-
   <dependencies>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -44,6 +44,35 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-mongo-client</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-config</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-core</artifactId>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.16.0</version>
+    </dependency>
+    <dependency>
+    <groupId>io.vertx</groupId>
+    <artifactId>vertx-auth-jwt</artifactId>
+    </dependency>
+    <dependency>
+    <groupId>io.vertx</groupId>
+    <artifactId>vertx-auth-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.mindrot</groupId>
+      <artifactId>jbcrypt</artifactId>
+      <version>0.4</version>
+    </dependency>
+
+
 
     <dependency>
       <groupId>io.vertx</groupId>
@@ -63,7 +92,6 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
   <build>
     <plugins>
       <plugin>
@@ -84,17 +112,15 @@
             </goals>
             <configuration>
               <transformers>
-                <transformer
-                  implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <manifestEntries>
                     <Main-Class>${launcher.class}</Main-Class>
                     <Main-Verticle>${main.verticle}</Main-Verticle>
                   </manifestEntries>
                 </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
               </transformers>
-              <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar
-              </outputFile>
+              <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile>
             </configuration>
           </execution>
         </executions>
@@ -115,8 +141,24 @@
           </arguments>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>io.reactiverse</groupId>
+        <artifactId>vertx-maven-plugin</artifactId>
+        <version>${vertx-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>vmp</id>
+            <goals>
+              <goal>initialize</goal>
+              <goal>package</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <verticle>${main.verticle}</verticle>
+          <redeploy>true</redeploy>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
-
-
 </project>
