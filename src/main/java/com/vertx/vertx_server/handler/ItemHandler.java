@@ -21,7 +21,6 @@ public class ItemHandler {
 
   public void handleAddItem(RoutingContext context) {
     JsonObject userPrincipal = context.user().principal();
-    System.out.println(userPrincipal.encodePrettily());
     String ownerId = userPrincipal.getString(OWNER_ID);
     System.out.println(ownerId);
 
@@ -32,7 +31,6 @@ public class ItemHandler {
     }
 
     String itemName = body.getString("name");
-    System.out.println(itemName);
     if (itemName == null) {
       context.response().setStatusCode(400).end("Item name is missing");
       return;
