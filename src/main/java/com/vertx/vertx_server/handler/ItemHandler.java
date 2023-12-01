@@ -8,7 +8,10 @@ import io.vertx.ext.web.RoutingContext;
 import java.util.UUID;
 
 public class ItemHandler {
-  private MongoClient mongoClient;
+
+  private static final String MONGODB_ITEMS_COLLECTION = "items";
+  private static final String OWNER_ID = "ownerId";
+  private final MongoClient mongoClient;
 
   public ItemHandler(
     MongoClient mongoClient
@@ -19,7 +22,7 @@ public class ItemHandler {
   public void handleAddItem(RoutingContext context) {
     JsonObject userPrincipal = context.user().principal();
     System.out.println(userPrincipal.encodePrettily());
-    String ownerId = userPrincipal.getString("ownerId");
+    String ownerId = userPrincipal.getString(OWNER_ID);
     System.out.println(ownerId);
 
     JsonObject body = context.getBodyAsJson();
@@ -37,7 +40,7 @@ public class ItemHandler {
 
     Item item = new Item(UUID.randomUUID(), UUID.fromString(ownerId), itemName);
     JsonObject itemJson = JsonObject.mapFrom(item);
-    mongoClient.save("items", itemJson, res -> {
+    mongoClient.save(MONGODB_ITEMS_COLLECTION, itemJson, res -> {
       if (res.succeeded()) {
         context.response()
           .setStatusCode(201)
@@ -51,9 +54,9 @@ public class ItemHandler {
 
   public void handleGetItems(RoutingContext context) {
     JsonObject userPrincipal = context.user().principal();
-    String ownerId = userPrincipal.getString("ownerId");
+    String ownerId = userPrincipal.getString(OWNER_ID);
     JsonObject query = new JsonObject().put("owner", ownerId);
-    mongoClient.find("items", query, res -> {
+    mongoClient.find(MONGODB_ITEMS_COLLECTION, query, res -> {
       if (res.succeeded()) {
         context.response()
           .setStatusCode(200)

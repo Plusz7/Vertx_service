@@ -11,8 +11,13 @@ import java.util.UUID;
 
 public class UserHandler {
 
-  private MongoClient mongoClient;
-  private JWTAuth jwtAuth;
+  private static final String ID = "id";
+  private static final String LOGIN = "login";
+  private static final String PASSWORD = "password";
+  private static final String MONGODB_USERS_COLLECTION = "users";
+
+  private final MongoClient mongoClient;
+  private final JWTAuth jwtAuth;
 
   public UserHandler(
     MongoClient mongoClient,
@@ -24,17 +29,17 @@ public class UserHandler {
 
   public void handleRegister(RoutingContext context) {
     JsonObject body = context.getBodyAsJson();
-    String login = body.getString("login");
-    String password = body.getString("password");
+    String login = body.getString(LOGIN);
+    String password = body.getString(PASSWORD);
 
     String hashedPassword = hashPassword(password);
 
     JsonObject newUser = new JsonObject()
-      .put("id", UUID.randomUUID().toString())
-      .put("login", login)
-      .put("password", hashedPassword);
+      .put(ID, UUID.randomUUID().toString())
+      .put(LOGIN, login)
+      .put(PASSWORD, hashedPassword);
 
-    mongoClient.save("users", newUser, res -> {
+    mongoClient.save(MONGODB_USERS_COLLECTION, newUser, res -> {
       if (res.succeeded()) {
         context.response().setStatusCode(204).end("Registering successfull.");
       } else {
@@ -45,16 +50,16 @@ public class UserHandler {
 
   public void handleLogin(RoutingContext context) {
     JsonObject body = context.getBodyAsJson();
-    String login = body.getString("login");
-    String password = body.getString("password");
+    String login = body.getString(LOGIN);
+    String password = body.getString(PASSWORD);
 
-    JsonObject query = new JsonObject().put("login", login);
-    mongoClient.findOne("users", query, null, lookup -> {
+    JsonObject query = new JsonObject().put(LOGIN, login);
+    mongoClient.findOne(MONGODB_USERS_COLLECTION, query, null, lookup -> {
       if (lookup.succeeded()) {
         JsonObject user = lookup.result();
-        if (user != null && BCrypt.checkpw(password, user.getString("password"))) {
+        if (user != null && BCrypt.checkpw(password, user.getString(PASSWORD))) {
           String token = jwtAuth.generateToken(
-            new JsonObject().put("ownerId", user.getString("id")),
+            new JsonObject().put("ownerId", user.getString(ID)),
             new JWTOptions().setExpiresInSeconds(60 * 60)
           );
           context.response()
