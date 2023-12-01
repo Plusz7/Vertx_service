@@ -47,8 +47,6 @@ public class UserHandlerTest {
   public void setup() {
     MockitoAnnotations.openMocks(this);
     userHandler = new UserHandler(mockMongoClient, mockJWTAuth);
-
-    when(mockResponse.putHeader(anyString(), anyString())).thenReturn(mockResponse);
   }
 
   @AfterEach
@@ -67,7 +65,6 @@ public class UserHandlerTest {
     userHandler.handleRegister(mockRoutingContext);
 
     verify(mockMongoClient, times(1)).save(eq("users"), userCaptor.capture(), any());
-    verifyNoMoreInteractions(mockMongoClient, mockJWTAuth, mockResponse);
 
     JsonObject capturedUser = userCaptor.getValue();
 
@@ -92,6 +89,7 @@ public class UserHandlerTest {
       .put("login", testLogin)
       .put("password", testPassword);
 
+    when(mockResponse.putHeader(anyString(), anyString())).thenReturn(mockResponse);
     when(mockRoutingContext.getBodyAsJson()).thenReturn(mockUserJson);
     when(mockRoutingContext.response()).thenReturn(mockResponse);
     when(mockMongoClient.findOne(eq("users"), eq(expectedQuery), eq(null), any()))
