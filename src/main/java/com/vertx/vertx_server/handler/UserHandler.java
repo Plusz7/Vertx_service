@@ -32,6 +32,11 @@ public class UserHandler {
     String login = body.getString(LOGIN);
     String password = body.getString(PASSWORD);
 
+    if(login == null || password == null) {
+      context.response().setStatusCode(400).end("Must provide a login and password.");
+      return;
+    }
+
     String hashedPassword = hashPassword(password);
 
     JsonObject newUser = new JsonObject()
@@ -41,7 +46,7 @@ public class UserHandler {
 
     mongoClient.save(MONGODB_USERS_COLLECTION, newUser, res -> {
       if (res.succeeded()) {
-        context.response().setStatusCode(204).end("Registering successfull.");
+        context.response().setStatusCode(201).end("Registering successfull.");
       } else {
         context.response().setStatusCode(500).end("User registration failed");
       }

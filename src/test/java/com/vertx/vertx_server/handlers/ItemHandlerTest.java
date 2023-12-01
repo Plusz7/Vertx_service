@@ -91,7 +91,7 @@ public class ItemHandlerTest {
     when(mockRoutingContext.user()).thenReturn(mockUser);
     when(mockRoutingContext.response()).thenReturn(mockResponse);
     when(mockResponse.putHeader(anyString(), anyString())).thenReturn(mockResponse);
-    when(mockResponse.setStatusCode(anyInt())).thenReturn(mockResponse);
+    when(mockResponse.setStatusCode(200)).thenReturn(mockResponse);
     when(mockMongoClient.find(eq("items"), eq(query), any())).thenAnswer( invocation -> {
         Handler <AsyncResult<List<JsonObject>>> handler = invocation.getArgument(2);
         handler.handle(Future.succeededFuture(items));

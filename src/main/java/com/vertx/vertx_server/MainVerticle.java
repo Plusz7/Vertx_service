@@ -28,7 +28,6 @@ public class MainVerticle extends AbstractVerticle {
 
   private static final String ITEMS_ENDPOINT = "/items";
   private MongoClient mongoClient;
-  private JWTAuth jwtAuth;
 
   @Override
   public void start(Promise<Void> startPromise) {
@@ -38,7 +37,7 @@ public class MainVerticle extends AbstractVerticle {
       if (ar.succeeded()) {
         JsonObject config = ar.result();
         JsonObject jwtConfig = config.getJsonObject("jwt");
-        initJWTAuth(jwtConfig);
+        JWTAuth jwtAuth = initJWTAuth(jwtConfig);
         mongoClient = MongoClient.createShared(vertx, config.getJsonObject("mongo"));
         ItemHandler itemHandler = new ItemHandler(mongoClient);
         UserHandler userHandler = new UserHandler(mongoClient, jwtAuth);
@@ -75,9 +74,8 @@ public class MainVerticle extends AbstractVerticle {
     }
   }
 
-  private void initJWTAuth(JsonObject jwtConfig) {
-    System.out.println("JWT Config: " + jwtConfig.encodePrettily());
-    jwtAuth = JWTAuth.create(vertx, new JWTAuthOptions()
+  private JWTAuth initJWTAuth(JsonObject jwtConfig) {
+    return JWTAuth.create(vertx, new JWTAuthOptions()
       .addPubSecKey(new PubSecKeyOptions()
         .setAlgorithm("HS256")
         .setBuffer(jwtConfig.getString("secret"))
