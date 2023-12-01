@@ -11,6 +11,7 @@ import java.util.UUID;
 
 public class UserHandler {
 
+  private static final String ID = "id";
   private static final String LOGIN = "login";
   private static final String PASSWORD = "password";
   private static final String MONGODB_USERS_COLLECTION = "users";
@@ -34,7 +35,7 @@ public class UserHandler {
     String hashedPassword = hashPassword(password);
 
     JsonObject newUser = new JsonObject()
-      .put("id", UUID.randomUUID().toString())
+      .put(ID, UUID.randomUUID().toString())
       .put(LOGIN, login)
       .put(PASSWORD, hashedPassword);
 
@@ -58,7 +59,7 @@ public class UserHandler {
         JsonObject user = lookup.result();
         if (user != null && BCrypt.checkpw(password, user.getString(PASSWORD))) {
           String token = jwtAuth.generateToken(
-            new JsonObject().put("ownerId", user.getString("id")),
+            new JsonObject().put("ownerId", user.getString(ID)),
             new JWTOptions().setExpiresInSeconds(60 * 60)
           );
           context.response()
