@@ -22,30 +22,33 @@ public class ItemHandler {
   public void handleAddItem(RoutingContext context) {
     JsonObject userPrincipal = context.user().principal();
     String ownerId = userPrincipal.getString(OWNER_ID);
-    System.out.println(ownerId);
 
     JsonObject body = context.getBodyAsJson();
     if (body == null) {
-      context.response().setStatusCode(400).end("Invalid JSON");
+      context.response().setStatusCode(400).end("JSON is null.");
       return;
     }
 
     String itemName = body.getString("name");
-    if (itemName == null) {
+    if (itemName == null || itemName.isEmpty()) {
       context.response().setStatusCode(400).end("Item name is missing");
       return;
     }
 
-    Item item = new Item(UUID.randomUUID(), UUID.fromString(ownerId), itemName);
-    JsonObject itemJson = JsonObject.mapFrom(item);
-    mongoClient.save(MONGODB_ITEMS_COLLECTION, itemJson, res -> {
+    Item item = new Item(
+      UUID.randomUUID(),
+      UUID.fromString(ownerId),
+      itemName
+    );
+
+    mongoClient.save(MONGODB_ITEMS_COLLECTION, JsonObject.mapFrom(item), res -> {
       if (res.succeeded()) {
         context.response()
           .setStatusCode(201)
           .putHeader("Content-Type", "application/json")
           .end(new JsonObject().put("id", res.result()).encode());
       } else {
-        context.response().setStatusCode(500).end("Failed to save item");
+        context.response().setStatusCode(500).end("Failed to save item" + "\n" + res.cause().getMessage());
       }
     });
   }
@@ -61,7 +64,7 @@ public class ItemHandler {
           .putHeader("Content-Type", "application/json")
           .end(res.result().toString());
       } else {
-        context.response().setStatusCode(500).end("Failed to retrieve items");
+        context.response().setStatusCode(500).end("Failed to retrieve items" + "\n" + res.cause().getMessage());
       }
     });
   }

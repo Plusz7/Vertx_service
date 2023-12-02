@@ -17,6 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(VertxExtension.class)
 public class MainVerticleResponsesTest {
+  private static final String LOCALHOST = "localhost";
+  private static final String REGISTER_ENDPOINT = "/register";
+  private static final String CONTENT_TYPE = "content-type";
+  private static final String APPLICATION_JSON = "application/json";
+  private static final String LOGIN = "login";
+  private static final String PASSWORD = "password";
 
   private Vertx vertx;
 
@@ -34,7 +40,7 @@ public class MainVerticleResponsesTest {
   @RepeatedTest(3)
   void httpServerCheckUnauthorizedResponse(Vertx vertx, VertxTestContext testContext) {
     HttpClient client = vertx.createHttpClient();
-    client.request(HttpMethod.GET, 3000, "localhost", "/items")
+    client.request(HttpMethod.GET, 3000, LOCALHOST, "/items")
       .compose(req -> req.send()
       .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
         assertEquals(401, response.statusCode());
@@ -46,11 +52,11 @@ public class MainVerticleResponsesTest {
   void httpServerCheckRegisterSuccessResponse(Vertx vertx, VertxTestContext testContext) {
     HttpClient client = vertx.createHttpClient();
     JsonObject requestBody = new JsonObject()
-      .put("login", "testUser")
-      .put("password", "testPass");
+      .put(LOGIN, "testUser@mail.com")
+      .put(PASSWORD, "testPass");
 
-    client.request(HttpMethod.POST, 3000, "localhost", "/register")
-      .compose(req -> req.putHeader("content-type", "application/json")
+    client.request(HttpMethod.POST, 3000, LOCALHOST, REGISTER_ENDPOINT)
+      .compose(req -> req.putHeader(CONTENT_TYPE, APPLICATION_JSON)
         .send(Buffer.buffer(requestBody.encode())))
       .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
         assertEquals(201, response.statusCode());
@@ -59,20 +65,50 @@ public class MainVerticleResponsesTest {
   }
 
   @Test
-  void httpServerCheckRegisterFailResponse(Vertx vertx, VertxTestContext testContext) {
+  void httpServerCheckRegisterNotEmailResponse(Vertx vertx, VertxTestContext testContext) {
     HttpClient client = vertx.createHttpClient();
-    JsonObject userRequestBody = new JsonObject()
-      .put("username", null)
-      .put("password", "testPass");
+    JsonObject requestBody = new JsonObject()
+      .put(LOGIN, "testUser")
+      .put(PASSWORD, "testPass");
 
-    client.request(HttpMethod.POST, 3000, "localhost", "/register")
-      .compose(req -> req.putHeader("content-type", "application/json")
-        .send(Buffer.buffer(userRequestBody.encode())))
+    client.request(HttpMethod.POST, 3000, LOCALHOST, REGISTER_ENDPOINT)
+      .compose(req -> req.putHeader(CONTENT_TYPE, APPLICATION_JSON)
+        .send(Buffer.buffer(requestBody.encode())))
       .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
         assertEquals(400, response.statusCode());
         testContext.completeNow();
       })));
   }
 
+  @Test
+  void httpServerCheckRegisterEmptyLoginResponse(Vertx vertx, VertxTestContext testContext) {
+    HttpClient client = vertx.createHttpClient();
+    JsonObject requestBody = new JsonObject()
+      .put(LOGIN, "")
+      .put(PASSWORD, "testPass");
 
+    client.request(HttpMethod.POST, 3000, LOCALHOST, REGISTER_ENDPOINT)
+      .compose(req -> req.putHeader(CONTENT_TYPE, APPLICATION_JSON)
+        .send(Buffer.buffer(requestBody.encode())))
+      .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
+        assertEquals(400, response.statusCode());
+        testContext.completeNow();
+      })));
+  }
+
+  @Test
+  void httpServerCheckRegisterFailResponse(Vertx vertx, VertxTestContext testContext) {
+    HttpClient client = vertx.createHttpClient();
+    JsonObject userRequestBody = new JsonObject()
+      .put(LOGIN, null)
+      .put(PASSWORD, "testPass");
+
+    client.request(HttpMethod.POST, 3000, LOCALHOST, REGISTER_ENDPOINT)
+      .compose(req -> req.putHeader(CONTENT_TYPE, APPLICATION_JSON)
+        .send(Buffer.buffer(userRequestBody.encode())))
+      .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
+        assertEquals(400, response.statusCode());
+        testContext.completeNow();
+      })));
+  }
 }

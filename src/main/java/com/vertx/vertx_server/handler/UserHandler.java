@@ -8,6 +8,7 @@ import io.vertx.ext.web.RoutingContext;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public class UserHandler {
 
@@ -33,9 +34,20 @@ public class UserHandler {
     String password = body.getString(PASSWORD);
 
     if(login == null || password == null) {
-      context.response().setStatusCode(400).end("Must provide a login and password.");
+      context.response().setStatusCode(400).end("Must provide a login and/or password.");
       return;
     }
+
+    if(login.isEmpty() || password.isEmpty()) {
+      context.response().setStatusCode(400).end("Must provide a login and/or password.");
+      return;
+    }
+
+    if(!isEmail(login)) {
+      context.response().setStatusCode(400).end("Must provide login as email.");
+      return;
+    }
+
 
     String hashedPassword = hashPassword(password);
 
@@ -48,7 +60,7 @@ public class UserHandler {
       if (res.succeeded()) {
         context.response().setStatusCode(201).end("Registering successfull.");
       } else {
-        context.response().setStatusCode(500).end("User registration failed");
+        context.response().setStatusCode(500).end("User registration failed" + "\n" + res.cause().getMessage());
       }
     });
   }
@@ -65,7 +77,7 @@ public class UserHandler {
         if (user != null && BCrypt.checkpw(password, user.getString(PASSWORD))) {
           String token = jwtAuth.generateToken(
             new JsonObject().put("ownerId", user.getString(ID)),
-            new JWTOptions().setExpiresInSeconds(60 * 60)
+            new JWTOptions().setExpiresInSeconds(60 * 5)
           );
           context.response()
             .putHeader("Content-Type", "application/json")
@@ -74,12 +86,17 @@ public class UserHandler {
           context.response().setStatusCode(401).end("Invalid credentials");
         }
       } else {
-        context.response().setStatusCode(500).end("Authentication failed");
+        context.response().setStatusCode(500).end(lookup.cause().getMessage());
       }
     });
   }
 
   private String hashPassword(String password) {
     return BCrypt.hashpw(password, BCrypt.gensalt());
+  }
+
+  private boolean isEmail(String email) {
+    Pattern pattern = Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}");
+    return pattern.matcher(email).matches();
   }
 }

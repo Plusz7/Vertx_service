@@ -1,14 +1,18 @@
 package com.vertx.vertx_server.handlers;
 
 import com.vertx.vertx_server.handler.UserHandler;
+import com.vertx.vertx_server.model.User;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.web.RequestBody;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,16 +79,13 @@ public class UserHandlerTest {
 
   @Test
   public void testHandleLogin() {
-
     String testLogin = "test@sometest.com";
     String testPassword = "testpass";
     JsonObject mockUser = new JsonObject()
       .put("id", UUID.randomUUID().toString())
       .put("login", testLogin)
       .put("password", BCrypt.hashpw(testPassword, BCrypt.gensalt()));
-
     JsonObject expectedQuery = new JsonObject().put("login", testLogin);
-
     JsonObject mockUserJson = new JsonObject()
       .put("login", testLogin)
       .put("password", testPassword);
