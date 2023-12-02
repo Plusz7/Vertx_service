@@ -53,7 +53,6 @@ public class ItemHandlerTest {
 
   @Test
   public void handleAddItemTest() {
-
     String ownerId = "eb5c7783-b3e4-4466-b281-13acb9990565";
     JsonObject mockItemJson = new JsonObject().put("name", "testItem");
     JsonObject principalJson = new JsonObject().put("ownerId", ownerId);

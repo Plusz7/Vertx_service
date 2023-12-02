@@ -33,15 +33,16 @@ public class MainVerticle extends AbstractVerticle {
   public void start(Promise<Void> startPromise) {
     ConfigRetrieverOptions options = getConfigRetrieverOptions();
     ConfigRetriever configRetriever = ConfigRetriever.create(vertx, options);
-    configRetriever.getConfig(ar -> {
-      if (ar.succeeded()) {
-        JsonObject config = ar.result();
+    configRetriever.getConfig(asyncResult -> {
+      if (asyncResult.succeeded()) {
+        JsonObject config = asyncResult.result();
         JsonObject jwtConfig = config.getJsonObject("jwt");
         JWTAuth jwtAuth = initJWTAuth(jwtConfig);
         mongoClient = MongoClient.createShared(vertx, config.getJsonObject("mongo"));
         ItemHandler itemHandler = new ItemHandler(mongoClient);
         UserHandler userHandler = new UserHandler(mongoClient, jwtAuth);
 
+        //router endpoint registration
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
         router.route(ITEMS_ENDPOINT).handler(JWTAuthHandler.create(jwtAuth));
@@ -54,7 +55,7 @@ public class MainVerticle extends AbstractVerticle {
 
         createHttpServer(startPromise, config, router);
       } else {
-        startPromise.fail(ar.cause());
+        startPromise.fail(asyncResult.cause());
       }
     });
   }
@@ -65,13 +66,6 @@ public class MainVerticle extends AbstractVerticle {
       .setFormat("json")
       .setConfig(new JsonObject().put("path", "config.json"));
     return new ConfigRetrieverOptions().addStore(fileStore);
-  }
-
-  @Override
-  public void stop() {
-    if (mongoClient != null) {
-      mongoClient.close();
-    }
   }
 
   private JWTAuth initJWTAuth(JsonObject jwtConfig) {

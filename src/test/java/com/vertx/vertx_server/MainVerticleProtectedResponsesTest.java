@@ -12,32 +12,27 @@ import io.vertx.ext.auth.JWTOptions;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.mongo.MongoClient;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.clearAllCaches;
 
 @ExtendWith(VertxExtension.class)
 public class MainVerticleProtectedResponsesTest {
-  @Mock
-  private MongoClient mockClient;
   private String token;
 
   @BeforeEach
   void setup(Vertx vertx, VertxTestContext testContext) {
     // creating proper test context setup with JWT
-    ConfigRetrieverOptions options = getConfigRetrieverOptions();
-    ConfigRetriever configRetriever = ConfigRetriever.create(vertx, options);
-    configRetriever.getConfig(ar -> {
-      if (ar.succeeded()) {
-        JsonObject config = ar.result();
+    ConfigRetriever configRetriever = ConfigRetriever.create(vertx, getConfigRetrieverOptions());
+    configRetriever.getConfig(asyncResult -> {
+      if (asyncResult.succeeded()) {
+        JsonObject config = asyncResult.result();
         JsonObject jwtConfig = config.getJsonObject("jwt");
         token = initJWTAuth(jwtConfig, vertx).generateToken(
           new JsonObject().put("ownerId", "eb5c7783-b3e4-4466-b281-13acb9990565"),
@@ -57,7 +52,7 @@ public class MainVerticleProtectedResponsesTest {
   }
 
   @Test
-  void testPostItemsWithJwt(Vertx vertx, VertxTestContext testContext) {
+  void testPostItemsWithJwtSuccess(Vertx vertx, VertxTestContext testContext) {
     JsonObject item = new JsonObject().put("name", "NewItem");
 
     HttpClient client = vertx.createHttpClient();
@@ -73,7 +68,53 @@ public class MainVerticleProtectedResponsesTest {
   }
 
   @Test
-  void testGetUsersItemsWithJwt(Vertx vertx, VertxTestContext testContext) {
+  void testPostItemsWithJwtWhenJSONIsNull(Vertx vertx, VertxTestContext testContext) {
+    HttpClient client = vertx.createHttpClient();
+    client.request(HttpMethod.POST, 3000, "localhost", "/items")
+      .compose(req -> req.
+        putHeader("Authorization", "Bearer " + token)
+        .putHeader("content-type", "application/json")
+        .send()
+        .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
+          assertEquals(400, response.statusCode());
+          testContext.completeNow();
+        }))));
+  }
+
+  @Test
+  void testPostItemsWithJwtMissingName(Vertx vertx, VertxTestContext testContext) {
+    JsonObject item = new JsonObject().put("name", "");
+
+    HttpClient client = vertx.createHttpClient();
+    client.request(HttpMethod.POST, 3000, "localhost", "/items")
+      .compose(req -> req.
+        putHeader("Authorization", "Bearer " + token)
+        .putHeader("content-type", "application/json")
+        .send(Buffer.buffer(item.encode()))
+        .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
+          assertEquals(400, response.statusCode());
+          testContext.completeNow();
+        }))));
+  }
+
+  @Test
+  void testPostItemsWithJwtNameIsNull(Vertx vertx, VertxTestContext testContext) {
+    JsonObject item = new JsonObject().put("name", null);
+
+    HttpClient client = vertx.createHttpClient();
+    client.request(HttpMethod.POST, 3000, "localhost", "/items")
+      .compose(req -> req.
+        putHeader("Authorization", "Bearer " + token)
+        .putHeader("content-type", "application/json")
+        .send(Buffer.buffer(item.encode()))
+        .onComplete(testContext.succeeding(response -> testContext.verify(() -> {
+          assertEquals(400, response.statusCode());
+          testContext.completeNow();
+        }))));
+  }
+
+  @Test
+  void testGetUsersItemsWithJwtSuccess(Vertx vertx, VertxTestContext testContext) {
     HttpClient client = vertx.createHttpClient();
     client.request(HttpMethod.GET, 3000, "localhost", "/items")
       .compose(req -> req.putHeader("Authorization", "Bearer " + token)
