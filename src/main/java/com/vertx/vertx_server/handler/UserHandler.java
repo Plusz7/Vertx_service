@@ -62,15 +62,7 @@ public class UserHandler {
       .put(PASSWORD, hashedPassword);
 
     LOG.info("Saving to database");
-    mongoClient.save(MONGODB_USERS_COLLECTION, newUser, res -> {
-      if (res.succeeded()) {
-        context.response().setStatusCode(201).end("Registering successfull.");
-        LOG.info("Registering successfull.");
-      } else {
-        context.response().setStatusCode(500).end("User registration failed");
-        LOG.error(res.cause().getMessage());
-      }
-    });
+    saveToMongoDb(context, newUser);
   }
 
   public void handleLogin(RoutingContext context) {
@@ -79,26 +71,7 @@ public class UserHandler {
     String password = body.getString(PASSWORD);
 
     JsonObject query = new JsonObject().put(LOGIN, login);
-    mongoClient.findOne(MONGODB_USERS_COLLECTION, query, null, lookup -> {
-      if (lookup.succeeded()) {
-        JsonObject user = lookup.result();
-        if (user != null && BCrypt.checkpw(password, user.getString(PASSWORD))) {
-          String token = jwtAuth.generateToken(
-            new JsonObject().put("ownerId", user.getString(ID)),
-            new JWTOptions().setExpiresInSeconds(60 * 5)
-          );
-          context.response()
-            .putHeader("Content-Type", "application/json")
-            .end(new JsonObject().put("token", token).encode());
-          LOG.info("User logged in.");
-        } else {
-          context.response().setStatusCode(401).end("Invalid credentials");
-        }
-      } else {
-        context.response().setStatusCode(500).end(lookup.cause().getMessage());
-        LOG.error(lookup.cause().getMessage());
-      }
-    });
+    authenticateUser(context, password, query);
   }
 
   private String hashPassword(String password) {
@@ -117,6 +90,46 @@ public class UserHandler {
       if (lookup.result() != null) {
         context.response().setStatusCode(400).end("User already exist.");
       };
+    });
+  }
+
+  private void authenticateUser(RoutingContext context, String password, JsonObject query) {
+    mongoClient.findOne(MONGODB_USERS_COLLECTION, query, null, lookup -> {
+      if (lookup.succeeded()) {
+        JsonObject user = lookup.result();
+        if (user != null && BCrypt.checkpw(password, user.getString(PASSWORD))) {
+          String token = getToken(user);
+
+          context.response()
+            .putHeader("Content-Type", "application/json")
+            .end(new JsonObject().put("token", token).encode());
+
+          LOG.info("User logged in.");
+        } else {
+          context.response().setStatusCode(401).end("Invalid credentials");
+        }
+      } else {
+        context.response().setStatusCode(500).end(lookup.cause().getMessage());
+        LOG.error(lookup.cause().getMessage());
+      }
+    });
+  }
+
+  private String getToken(JsonObject user) {
+    return jwtAuth.generateToken(
+      new JsonObject().put("ownerId", user.getString(ID)),
+      new JWTOptions().setExpiresInSeconds(60 * 5)
+    );
+  }
+  private void saveToMongoDb(RoutingContext context, JsonObject newUser) {
+    mongoClient.save(MONGODB_USERS_COLLECTION, newUser, res -> {
+      if (res.succeeded()) {
+        context.response().setStatusCode(201).end("Registering successfull.");
+        LOG.info("Registering successfull.");
+      } else {
+        context.response().setStatusCode(500).end("User registration failed");
+        LOG.error(res.cause().getMessage());
+      }
     });
   }
 }

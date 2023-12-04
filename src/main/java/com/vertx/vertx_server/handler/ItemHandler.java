@@ -44,6 +44,17 @@ public class ItemHandler {
       itemName
     );
 
+    saveItem(context, item);
+  }
+
+  public void handleGetItems(RoutingContext context) {
+    JsonObject userPrincipal = context.user().principal();
+    String ownerId = userPrincipal.getString(OWNER_ID);
+    JsonObject query = new JsonObject().put("owner", ownerId);
+    findItems(context, query);
+  }
+
+  private void saveItem(RoutingContext context, Item item) {
     mongoClient.save(MONGODB_ITEMS_COLLECTION, JsonObject.mapFrom(item), res -> {
       if (res.succeeded()) {
         context.response()
@@ -58,10 +69,7 @@ public class ItemHandler {
     });
   }
 
-  public void handleGetItems(RoutingContext context) {
-    JsonObject userPrincipal = context.user().principal();
-    String ownerId = userPrincipal.getString(OWNER_ID);
-    JsonObject query = new JsonObject().put("owner", ownerId);
+  private void findItems(RoutingContext context, JsonObject query) {
     mongoClient.find(MONGODB_ITEMS_COLLECTION, query, res -> {
       if (res.succeeded()) {
         context.response()
