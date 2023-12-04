@@ -1,5 +1,7 @@
 package com.vertx.vertx_server.handler;
 
+import io.vertx.core.impl.logging.Logger;
+import io.vertx.core.impl.logging.LoggerFactory;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.JWTOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
@@ -12,6 +14,7 @@ import java.util.regex.Pattern;
 
 public class UserHandler {
 
+  private static final Logger LOG = LoggerFactory.getLogger(UserHandler.class);
   private static final String ID = "id";
   private static final String LOGIN = "login";
   private static final String PASSWORD = "password";
@@ -29,25 +32,27 @@ public class UserHandler {
   }
 
   public void handleRegister(RoutingContext context) {
+    LOG.info("Initiating user registration.");
     JsonObject body = context.getBodyAsJson();
     String login = body.getString(LOGIN);
     String password = body.getString(PASSWORD);
 
-    if(login == null || password == null) {
+    if (login == null || password == null) {
       context.response().setStatusCode(400).end("Must provide a login and/or password.");
       return;
     }
 
-    if(login.isEmpty() || password.isEmpty()) {
+    if (login.isEmpty() || password.isEmpty()) {
       context.response().setStatusCode(400).end("Must provide a login and/or password.");
       return;
     }
 
-    if(!isEmail(login)) {
+    if (!isEmail(login)) {
       context.response().setStatusCode(400).end("Must provide login as email.");
       return;
     }
-
+    alreadyExistsCheck(login, context);
+    LOG.info("User login/password validated.");
 
     String hashedPassword = hashPassword(password);
 
@@ -56,11 +61,14 @@ public class UserHandler {
       .put(LOGIN, login)
       .put(PASSWORD, hashedPassword);
 
+    LOG.info("Saving to database");
     mongoClient.save(MONGODB_USERS_COLLECTION, newUser, res -> {
       if (res.succeeded()) {
         context.response().setStatusCode(201).end("Registering successfull.");
+        LOG.info("Registering successfull.");
       } else {
-        context.response().setStatusCode(500).end("User registration failed" + "\n" + res.cause().getMessage());
+        context.response().setStatusCode(500).end("User registration failed");
+        LOG.error(res.cause().getMessage());
       }
     });
   }
@@ -82,11 +90,13 @@ public class UserHandler {
           context.response()
             .putHeader("Content-Type", "application/json")
             .end(new JsonObject().put("token", token).encode());
+          LOG.info("User logged in.");
         } else {
           context.response().setStatusCode(401).end("Invalid credentials");
         }
       } else {
         context.response().setStatusCode(500).end(lookup.cause().getMessage());
+        LOG.error(lookup.cause().getMessage());
       }
     });
   }
@@ -98,5 +108,15 @@ public class UserHandler {
   private boolean isEmail(String email) {
     Pattern pattern = Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,4}");
     return pattern.matcher(email).matches();
+  }
+
+  private void alreadyExistsCheck(String login, RoutingContext context) {
+    JsonObject query = new JsonObject()
+      .put("login", login);
+    mongoClient.findOne(MONGODB_USERS_COLLECTION, query, null, lookup -> {
+      if (lookup.result() != null) {
+        context.response().setStatusCode(400).end("User already exist.");
+      };
+    });
   }
 }

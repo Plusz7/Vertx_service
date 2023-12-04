@@ -9,8 +9,9 @@ import io.vertx.config.ConfigStoreOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.impl.logging.Logger;
+import io.vertx.core.impl.logging.LoggerFactory;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.JWTOptions;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
@@ -22,12 +23,17 @@ import io.vertx.ext.web.handler.JWTAuthHandler;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.util.UUID;
-import java.util.logging.Logger;
 
 public class MainVerticle extends AbstractVerticle {
 
   private static final String ITEMS_ENDPOINT = "/items";
-  private MongoClient mongoClient;
+
+  private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
+  private final MongoClient mongoClient;
+
+  public MainVerticle(MongoClient mongoClient){
+    this.mongoClient = mongoClient;
+  }
 
   @Override
   public void start(Promise<Void> startPromise) {
@@ -38,11 +44,10 @@ public class MainVerticle extends AbstractVerticle {
         JsonObject config = asyncResult.result();
         JsonObject jwtConfig = config.getJsonObject("jwt");
         JWTAuth jwtAuth = initJWTAuth(jwtConfig);
-        mongoClient = MongoClient.createShared(vertx, config.getJsonObject("mongo"));
         ItemHandler itemHandler = new ItemHandler(mongoClient);
         UserHandler userHandler = new UserHandler(mongoClient, jwtAuth);
 
-        //router endpoint registration
+        LOG.info("Router endpoint registration.");
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
         router.route(ITEMS_ENDPOINT).handler(JWTAuthHandler.create(jwtAuth));
@@ -60,7 +65,8 @@ public class MainVerticle extends AbstractVerticle {
     });
   }
 
-  private static ConfigRetrieverOptions getConfigRetrieverOptions() {
+  public static ConfigRetrieverOptions getConfigRetrieverOptions() {
+    LOG.info("Retrieving configuration.");
     ConfigStoreOptions fileStore = new ConfigStoreOptions()
       .setType("file")
       .setFormat("json")
@@ -82,9 +88,10 @@ public class MainVerticle extends AbstractVerticle {
     vertx.createHttpServer(options).requestHandler(router).listen(httpPort, http -> {
       if (http.succeeded()) {
         startPromise.complete();
-        System.out.println("HTTP server started on port " + httpPort);
+        LOG.info("HTTP server started on port " + httpPort);
       } else {
         startPromise.fail(http.cause());
+        LOG.error(http.cause().getMessage());
       }
     });
   }
