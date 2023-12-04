@@ -1,5 +1,7 @@
 package com.vertx.vertx_server;
 
+import io.vertx.config.ConfigRetriever;
+import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -22,6 +24,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.concurrent.TimeUnit;
 
+import static com.vertx.vertx_server.MainVerticle.getConfigRetrieverOptions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -45,7 +48,11 @@ public class MainVerticleResponsesTest {
   void setup(VertxTestContext testContext) {
     vertx = Vertx.vertx();
     MockitoAnnotations.openMocks(this);
-    vertx.deployVerticle(new MainVerticle(mockMongoClient), testContext.succeedingThenComplete());
+    ConfigRetrieverOptions options = getConfigRetrieverOptions();
+    ConfigRetriever configRetriever = ConfigRetriever.create(vertx, options);
+    configRetriever.getConfig(asyncResult -> {
+      vertx.deployVerticle(new MainVerticle(vertx, mockMongoClient, asyncResult.result()), testContext.succeedingThenComplete());
+    });
   }
 
   @AfterEach

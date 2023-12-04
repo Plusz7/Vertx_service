@@ -56,7 +56,7 @@ public class MainVerticleProtectedResponsesTest {
           new JWTOptions().setExpiresInSeconds(5)
         );
 
-        vertx.deployVerticle(new MainVerticle(mockMongoClient), testContext.succeedingThenComplete());
+        vertx.deployVerticle(new MainVerticle(vertx, mockMongoClient, config), testContext.succeedingThenComplete());
       }
     });
   }
