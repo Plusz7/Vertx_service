@@ -8,6 +8,7 @@ import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.config.ConfigStoreOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.impl.logging.Logger;
 import io.vertx.core.impl.logging.LoggerFactory;
@@ -29,19 +30,21 @@ public class MainVerticle extends AbstractVerticle {
   private static final String ITEMS_ENDPOINT = "/items";
 
   private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
+
+  private final Vertx vertx;
+  private final JsonObject config;
   private final MongoClient mongoClient;
 
-  public MainVerticle(MongoClient mongoClient){
+  public MainVerticle(Vertx vertx, MongoClient mongoClient, JsonObject config){
+    this.vertx = vertx;
     this.mongoClient = mongoClient;
+    this.config = config;
   }
 
   @Override
   public void start(Promise<Void> startPromise) {
-    ConfigRetrieverOptions options = getConfigRetrieverOptions();
-    ConfigRetriever configRetriever = ConfigRetriever.create(vertx, options);
-    configRetriever.getConfig(asyncResult -> {
-      if (asyncResult.succeeded()) {
-        JsonObject config = asyncResult.result();
+
+
         JsonObject jwtConfig = config.getJsonObject("jwt");
         JWTAuth jwtAuth = initJWTAuth(jwtConfig);
         ItemHandler itemHandler = new ItemHandler(mongoClient);
@@ -59,10 +62,6 @@ public class MainVerticle extends AbstractVerticle {
         router.get(ITEMS_ENDPOINT).handler(itemHandler::handleGetItems);
 
         createHttpServer(startPromise, config, router);
-      } else {
-        startPromise.fail(asyncResult.cause());
-      }
-    });
   }
 
   public static ConfigRetrieverOptions getConfigRetrieverOptions() {

@@ -21,7 +21,7 @@ public class ApplicationLauncher {
       if (asyncResult.succeeded()) {
         JsonObject config = asyncResult.result();
         MongoClient mongoClient = MongoClient.createShared(vertx, config.getJsonObject("mongo"));
-        MainVerticle mainVerticle = new MainVerticle(mongoClient);
+        MainVerticle mainVerticle = new MainVerticle(vertx, mongoClient, config);
 
         vertx.deployVerticle(mainVerticle, result -> {
           if (result.succeeded()) {
