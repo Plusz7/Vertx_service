@@ -1,6 +1,8 @@
 package com.vertx.vertx_server.handler;
 
 import com.vertx.vertx_server.model.Item;
+import io.vertx.core.impl.logging.Logger;
+import io.vertx.core.impl.logging.LoggerFactory;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.web.RoutingContext;
@@ -9,6 +11,7 @@ import java.util.UUID;
 
 public class ItemHandler {
 
+  private static final Logger LOG = LoggerFactory.getLogger(ItemHandler.class);
   private static final String MONGODB_ITEMS_COLLECTION = "items";
   private static final String OWNER_ID = "ownerId";
   private final MongoClient mongoClient;
@@ -47,8 +50,10 @@ public class ItemHandler {
           .setStatusCode(201)
           .putHeader("Content-Type", "application/json")
           .end(new JsonObject().put("id", res.result()).encode());
+        LOG.info("Item added.");
       } else {
-        context.response().setStatusCode(500).end("Failed to save item" + "\n" + res.cause().getMessage());
+        context.response().setStatusCode(500).end("Failed to save item");
+        LOG.error(res.cause().getMessage());
       }
     });
   }
@@ -64,7 +69,8 @@ public class ItemHandler {
           .putHeader("Content-Type", "application/json")
           .end(res.result().toString());
       } else {
-        context.response().setStatusCode(500).end("Failed to retrieve items" + "\n" + res.cause().getMessage());
+        context.response().setStatusCode(500).end("Failed to retrieve items");
+        LOG.error(res.cause().getMessage());
       }
     });
   }
